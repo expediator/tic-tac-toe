@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic-Tac-Toe · expediator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0d0f14;
+    --panel:   #151820;
+    --border:  #252a35;
+    --accent:  #3b9eff;
+    --x-color: #ff5c7a;
+    --o-color: #3ddcdc;
+    --text:    #e2e5ed;
+    --muted:   #7a8090;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(59,158,255,.08) 0%, transparent 65%);
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+
+  .sub {
+    font-size: .75rem;
+    color: var(--muted);
+    margin-bottom: 20px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .sub a { color: var(--accent); text-decoration: none; }
+  .sub a:hover { text-decoration: underline; }
+
+  /* Mode selector */
+  .mode-panel {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .mode-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+    font-family: 'Sora', sans-serif;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .18s;
+  }
+  .mode-btn.active, .mode-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(59,158,255,.08);
+  }
+
+  /* Status */
+  .status {
+    font-size: .9rem;
+    font-weight: 600;
+    height: 28px;
+    margin-bottom: 14px;
+    text-align: center;
+    transition: color .2s;
+  }
+  .status.x  { color: var(--x-color); }
+  .status.o  { color: var(--o-color); }
+  .status.win { color: #ffe066; }
+  .status.draw { color: var(--muted); }
+
+  /* Board */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: min(300px, 90vw);
+    margin-bottom: 18px;
+  }
+
+  .cell {
+    aspect-ratio: 1;
+    background: var(--panel);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .cell:hover:not(.taken) {
+    background: rgba(59,158,255,.06);
+    border-color: var(--accent);
+    transform: scale(1.04);
+  }
+  .cell.taken { cursor: default; }
+  .cell.x-cell { color: var(--x-color); border-color: rgba(255,92,122,.3); }
+  .cell.o-cell { color: var(--o-color); border-color: rgba(61,220,220,.3); }
+  .cell.winner { border-color: #ffe066 !important; background: rgba(255,224,102,.07) !important; }
+
+  /* Pop-in animation */
+  @keyframes popin {
+    0%   { transform: scale(.4); opacity: 0; }
+    70%  { transform: scale(1.1); }
+    100% { transform: scale(1);  opacity: 1; }
+  }
+  .cell .mark { animation: popin .2s ease-out; display: inline-block; }
+
+  /* Buttons */
+  .restart-btn {
+    padding: 9px 28px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .18s;
+  }
+  .restart-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(59,158,255,.08);
+  }
+
+  /* Score */
+  .score {
+    display: flex;
+    gap: 22px;
+    margin-top: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .78rem;
+  }
+  .score-item { text-align: center; color: var(--muted); }
+  .score-item .val { font-size: 1.3rem; font-weight: 600; display: block; margin-top: 2px; }
+  .score-item.x-score .val { color: var(--x-color); }
+  .score-item.draw-score .val { color: var(--muted); }
+  .score-item.o-score .val { color: var(--o-color); }
+
+  /* Footer */
+  .footer {
+    margin-top: 30px;
+    font-size: .72rem;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+  }
+  .footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<h1>Tic-Tac-Toe</h1>
+<p class="sub">by <a href="https://github.com/expediator" target="_blank">expediator</a> · <a href="https://expediator.github.io/resume/" target="_blank">portfolio</a></p>
+
+<div class="mode-panel">
+  <button class="mode-btn active" id="btnFriend" onclick="setMode('friend')">👥 vs Friend</button>
+  <button class="mode-btn" id="btnAI" onclick="setMode('ai')">🤖 vs AI</button>
+</div>
+
+<div class="status" id="status">X's turn</div>
+
+<div class="board" id="board">
+  <div class="cell" data-i="0" onclick="handleClick(0)"></div>
+  <div class="cell" data-i="1" onclick="handleClick(1)"></div>
+  <div class="cell" data-i="2" onclick="handleClick(2)"></div>
+  <div class="cell" data-i="3" onclick="handleClick(3)"></div>
+  <div class="cell" data-i="4" onclick="handleClick(4)"></div>
+  <div class="cell" data-i="5" onclick="handleClick(5)"></div>
+  <div class="cell" data-i="6" onclick="handleClick(6)"></div>
+  <div class="cell" data-i="7" onclick="handleClick(7)"></div>
+  <div class="cell" data-i="8" onclick="handleClick(8)"></div>
+</div>
+
+<button class="restart-btn" onclick="restart()">↺ Restart</button>
+
+<div class="score">
+  <div class="score-item x-score"><span>X</span><span class="val" id="scoreX">0</span></div>
+  <div class="score-item draw-score"><span>Draw</span><span class="val" id="scoreDraw">0</span></div>
+  <div class="score-item o-score"><span>O</span><span class="val" id="scoreO">0</span></div>
+</div>
+
+<div class="footer">
+  <a href="https://github.com/expediator/tic-tac-toe" target="_blank">View source on GitHub →</a>
+</div>
+
+<script>
+const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+let board   = Array(9).fill(null);
+let current = 'X';
+let mode    = 'friend';
+let gameOver = false;
+let score   = { X: 0, Draw: 0, O: 0 };
+
+const cells   = document.querySelectorAll('.cell');
+const statusEl = document.getElementById('status');
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnFriend').classList.toggle('active', m === 'friend');
+  document.getElementById('btnAI').classList.toggle('active', m === 'ai');
+  restart();
+}
+
+function handleClick(i) {
+  if (gameOver || board[i]) return;
+  if (mode === 'ai' && current === 'O') return; // AI's turn
+  makeMove(i, current);
+  if (!gameOver && mode === 'ai' && current === 'O') {
+    setTimeout(aiMove, 220);
+  }
+}
+
+function makeMove(i, player) {
+  board[i] = player;
+  renderCell(i, player);
+
+  const win = checkWin(player);
+  if (win) {
+    win.forEach(idx => cells[idx].classList.add('winner'));
+    setStatus(`${player} wins! 🎉`, 'win');
+    score[player]++;
+    updateScore();
+    gameOver = true;
+    return;
+  }
+  if (board.every(Boolean)) {
+    setStatus("It's a draw!", 'draw');
+    score.Draw++;
+    updateScore();
+    gameOver = true;
+    return;
+  }
+  current = current === 'X' ? 'O' : 'X';
+  setStatus(`${current}'s turn`, current.toLowerCase());
+}
+
+function renderCell(i, player) {
+  cells[i].innerHTML = `<span class="mark">${player}</span>`;
+  cells[i].classList.add('taken', player === 'X' ? 'x-cell' : 'o-cell');
+}
+
+function checkWin(player) {
+  return WINS.find(([a,b,c]) => board[a]===player && board[b]===player && board[c]===player) || null;
+}
+
+function setStatus(msg, cls) {
+  statusEl.textContent = msg;
+  statusEl.className = 'status ' + cls;
+}
+
+function updateScore() {
+  document.getElementById('scoreX').textContent    = score.X;
+  document.getElementById('scoreDraw').textContent = score.Draw;
+  document.getElementById('scoreO').textContent    = score.O;
+}
+
+function restart() {
+  board    = Array(9).fill(null);
+  current  = 'X';
+  gameOver = false;
+  cells.forEach(c => {
+    c.innerHTML = '';
+    c.className = 'cell';
+  });
+  setStatus("X's turn", 'x');
+}
+
+// ----- Minimax AI -----
+function aiMove() {
+  const move = bestMove();
+  if (move !== -1) makeMove(move, 'O');
+}
+
+function bestMove() {
+  let best = -Infinity, idx = -1;
+  for (let i = 0; i < 9; i++) {
+    if (!board[i]) {
+      board[i] = 'O';
+      const s = minimax(board, 0, false);
+      board[i] = null;
+      if (s > best) { best = s; idx = i; }
+    }
+  }
+  return idx;
+}
+
+function minimax(b, depth, isMax) {
+  if (checkWinFor(b, 'O')) return 10 - depth;
+  if (checkWinFor(b, 'X')) return depth - 10;
+  if (b.every(Boolean)) return 0;
+
+  if (isMax) {
+    let best = -Infinity;
+    for (let i = 0; i < 9; i++) {
+      if (!b[i]) { b[i]='O'; best=Math.max(best,minimax(b,depth+1,false)); b[i]=null; }
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (let i = 0; i < 9; i++) {
+      if (!b[i]) { b[i]='X'; best=Math.min(best,minimax(b,depth+1,true)); b[i]=null; }
+    }
+    return best;
+  }
+}
+
+function checkWinFor(b, p) {
+  return WINS.some(([a,c,d]) => b[a]===p && b[c]===p && b[d]===p);
+}
+
+setStatus("X's turn", 'x');
+</script>
+</body>
+</html>
